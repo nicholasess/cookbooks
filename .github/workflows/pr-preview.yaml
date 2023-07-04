@@ -2,36 +2,27 @@ name: Deploy Preview
 'on':
   - pull_request
 jobs:
-  deploy-preview:
+  test_filter:
     runs-on: ubuntu-latest
+    outputs:
+      has_modified: ${{ steps.filter.outputs.nextjs }}
     steps:
       - name: Checkout
-        uses: actions/checkout@2
-      - name: Get PR number
-        id: get_pull_request_sha
-        run: |
-          pull_request_sha=$(jq --raw-output .pull_request.base.sha
-          "$GITHUB_EVENT_PATH" | cut -c1-8)
+        uses: actions/checkout@v3
 
-          echo "pull_request_sha=${pull_request_sha}" >> $GITHUB_OUTPUT
-
-          echo $pull_request_sha
-          
-      - name: Install Vercel CLI
-        run: npm install --global vercel@latest
-
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=preview --token=${{secrets.VERCEL_TOKEN }}
-
-      - name: Build Project Artifacts
-        run: 'vercel build --token=${{ secrets.VERCEL_TOKEN }}'
-
-      - name: Deploy Preview to Vercel
-        id: deploy
-        run: echo preview_url=$(vercel /apps/nestjs --prebuilt --token=${{secrets.VERCEL_TOKEN }}) >> $GITHUB_OUTPUT
-    
-      - name: Comment on Pull Request
-        uses: thollander/actions-comment-pull-request@v2
+      - uses: dorny/paths-filter@v2.2.1
+        id: filter
         with:
-          message: |
-            Vercel Preview URL :rocket: : ${{ steps.deploy.outputs.preview_url }}
+          filters: |
+            nextjs:
+              - 'apps/nextjs/**'
+  deploy-preview:
+    runs-on: ubuntu-latest
+    needs: test_filter
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Lint Markdown
+        if: ${{ needs.test_filter.outputs.has_modified == 'true' }}
+        run: echo "FUNCIONOU CARALHOq"
